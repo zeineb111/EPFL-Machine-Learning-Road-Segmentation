@@ -12,6 +12,8 @@ import gzip
 import os
 import sys
 import urllib
+from multiprocessing import pool
+
 import matplotlib.image as mpimg
 from PIL import Image
 
@@ -28,10 +30,11 @@ NUM_LABELS = 2
 TRAINING_SIZE = 20
 VALIDATION_SIZE = 5  # Size of the validation set.
 SEED = 66478  # Set to None for random seed.
-BATCH_SIZE = 16  # 64
+BATCH_SIZE = 128  # 64
 NUM_EPOCHS = 100
 RESTORE_MODEL = False  # If True, restore existing model instead of training a new one
 RECORDING_STEP = 0
+REGULARIZATION_LAMBDA = 1e-6
 
 # Set image patch size in pixels
 # IMG_PATCH_SIZE should be a multiple of 4
@@ -53,9 +56,9 @@ def img_crop(im, w, h):
     for i in range(0, imgheight, h):
         for j in range(0, imgwidth, w):
             if is_2d:
-                im_patch = im[j:j+w, i:i+h]
+                im_patch = im[j:j + w, i:i + h]
             else:
-                im_patch = im[j:j+w, i:i+h, :]
+                im_patch = im[j:j + w, i:i + h, :]
             list_patches.append(im_patch)
     return list_patches
 
@@ -65,7 +68,7 @@ def extract_data(filename, num_images):
     Values are rescaled from [0, 255] down to [-0.5, 0.5].
     """
     imgs = []
-    for i in range(1, num_images+1):
+    for i in range(1, num_images + 1):
         imageid = "satImage_%.3d" % i
         image_filename = filename + imageid + ".png"
         if os.path.isfile(image_filename):
@@ -78,7 +81,7 @@ def extract_data(filename, num_images):
     num_images = len(imgs)
     IMG_WIDTH = imgs[0].shape[0]
     IMG_HEIGHT = imgs[0].shape[1]
-    N_PATCHES_PER_IMAGE = (IMG_WIDTH/IMG_PATCH_SIZE)*(IMG_HEIGHT/IMG_PATCH_SIZE)
+    N_PATCHES_PER_IMAGE = (IMG_WIDTH / IMG_PATCH_SIZE) * (IMG_HEIGHT / IMG_PATCH_SIZE)
 
     img_patches = [img_crop(imgs[i], IMG_PATCH_SIZE, IMG_PATCH_SIZE) for i in range(num_images)]
     data = [img_patches[i][j] for i in range(len(img_patches)) for j in range(len(img_patches[i]))]
@@ -122,9 +125,9 @@ def extract_labels(filename, num_images):
 def error_rate(predictions, labels):
     """Return the error rate based on dense predictions and 1-hot labels."""
     return 100.0 - (
-        100.0 *
-        numpy.sum(numpy.argmax(predictions, 1) == numpy.argmax(labels, 1)) /
-        predictions.shape[0])
+            100.0 *
+            numpy.sum(numpy.argmax(predictions, 1) == numpy.argmax(labels, 1)) /
+            predictions.shape[0])
 
 
 # Write predictions from neural network to a file
@@ -155,7 +158,7 @@ def label_to_img(imgwidth, imgheight, w, h, labels):
                 l = 0
             else:
                 l = 1
-            array_labels[j:j+w, i:i+h] = l
+            array_labels[j:j + w, i:i + h] = l
             idx = idx + 1
     return array_labels
 
@@ -174,7 +177,7 @@ def concatenate_images(img, gt_img):
         cimg = numpy.concatenate((img, gt_img), axis=1)
     else:
         gt_img_3c = numpy.zeros((w, h, 3), dtype=numpy.uint8)
-        gt_img8 = img_float_to_uint8(gt_img)          
+        gt_img8 = img_float_to_uint8(gt_img)
         gt_img_3c[:, :, 0] = gt_img8
         gt_img_3c[:, :, 1] = gt_img8
         gt_img_3c[:, :, 2] = gt_img8
@@ -187,7 +190,7 @@ def make_img_overlay(img, predicted_img):
     w = img.shape[0]
     h = img.shape[1]
     color_mask = numpy.zeros((w, h, 3), dtype=numpy.uint8)
-    color_mask[:, :, 0] = predicted_img*PIXEL_DEPTH
+    color_mask[:, :, 0] = predicted_img * PIXEL_DEPTH
 
     img8 = img_float_to_uint8(img)
     background = Image.fromarray(img8, 'RGB').convert("RGBA")
@@ -200,7 +203,7 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     data_dir = '../data/training/'
     train_data_filename = data_dir + 'images/'
-    train_labels_filename = data_dir + 'groundtruth/' 
+    train_labels_filename = data_dir + 'groundtruth/'
 
     # Extract it into numpy arrays.
     train_data = extract_data(train_data_filename, TRAINING_SIZE)
@@ -229,6 +232,8 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     train_size = train_labels.shape[0]
 
+    print("train_size = " + train_size)
+
     c0 = 0
     c1 = 0
     for i in range(len(train_labels)):
@@ -252,17 +257,17 @@ def main(argv=None):  # pylint: disable=unused-argument
     # initial value which will be assigned when when we call:
     # {tf.initialize_all_variables().run()}
     conv1_weights = tf.Variable(
-        tf.truncated_normal([5, 5, NUM_CHANNELS, 32],  # 5x5 filter, depth 32.
+        tf.truncated_normal([5, 5, NUM_CHANNELS, 64],  # 5x5 filter, depth 64.
                             stddev=0.1,
                             seed=SEED))
-    conv1_biases = tf.Variable(tf.zeros([32]))
+    conv1_biases = tf.Variable(tf.zeros([64]))
     conv2_weights = tf.Variable(
-        tf.truncated_normal([5, 5, 32, 64],
+        tf.truncated_normal([5, 5, 64, 128],
                             stddev=0.1,
                             seed=SEED))
-    conv2_biases = tf.Variable(tf.constant(0.1, shape=[64]))
+    conv2_biases = tf.Variable(tf.constant(0.1, shape=[128]))
     fc1_weights = tf.Variable(  # fully connected, depth 512.
-        tf.truncated_normal([int(IMG_PATCH_SIZE / 4 * IMG_PATCH_SIZE / 4 * 64), 512],
+        tf.truncated_normal([int(IMG_PATCH_SIZE / 4 * IMG_PATCH_SIZE / 4 * 128), 512],
                             stddev=0.1,
                             seed=SEED))
     fc1_biases = tf.Variable(tf.constant(0.1, shape=[512]))
@@ -280,12 +285,12 @@ def main(argv=None):  # pylint: disable=unused-argument
         min_value = tf.reduce_min(V)
         V = V - min_value
         max_value = tf.reduce_max(V)
-        V = V / (max_value*PIXEL_DEPTH)
+        V = V / (max_value * PIXEL_DEPTH)
         V = tf.reshape(V, (img_w, img_h, 1))
         V = tf.transpose(V, (2, 0, 1))
         V = tf.reshape(V, (-1, img_w, img_h, 1))
         return V
-    
+
     # Make an image summary for 3d tensor image with index idx
     def get_image_summary_3d(img):
         V = tf.slice(img, (0, 0, 0), (1, -1, -1))
@@ -361,11 +366,13 @@ def main(argv=None):  # pylint: disable=unused-argument
                                padding='SAME')
 
         # Uncomment these lines to check the size of each layer
-        # print 'data ' + str(data.get_shape())
-        # print 'conv ' + str(conv.get_shape())
-        # print 'relu ' + str(relu.get_shape())
-        # print 'pool ' + str(pool.get_shape())
-        # print 'pool2 ' + str(pool2.get_shape())
+        print('data ' + str(data.get_shape()))
+        print('conv ' + str(conv.get_shape()))
+        print('relu ' + str(relu.get_shape()))
+
+        print('pool ' + str(pool.get_shape()))
+
+        print('pool2 ' + str(pool2.get_shape()))
 
         # Reshape the feature map cuboid into a 2D matrix to feed it to the
         # fully connected layers.
@@ -378,7 +385,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         hidden = tf.nn.relu(tf.matmul(reshape, fc1_weights) + fc1_biases)
         # Add a 50% dropout during training only. Dropout also scales
         # activations such that no rescaling is needed at evaluation time.
-        #if train:
+        # if train:
         #    hidden = tf.nn.dropout(hidden, 0.5, seed=SEED)
         out = tf.matmul(hidden, fc2_weights) + fc2_biases
 
@@ -406,34 +413,36 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     tf.summary.scalar('loss', loss)
 
-    all_params_node = [conv1_weights, conv1_biases, conv2_weights, conv2_biases, fc1_weights, fc1_biases, fc2_weights, fc2_biases]
-    all_params_names = ['conv1_weights', 'conv1_biases', 'conv2_weights', 'conv2_biases', 'fc1_weights', 'fc1_biases', 'fc2_weights', 'fc2_biases']
+    all_params_node = [conv1_weights, conv1_biases, conv2_weights, conv2_biases, fc1_weights, fc1_biases, fc2_weights,
+                       fc2_biases]
+    all_params_names = ['conv1_weights', 'conv1_biases', 'conv2_weights', 'conv2_biases', 'fc1_weights', 'fc1_biases',
+                        'fc2_weights', 'fc2_biases']
     all_grads_node = tf.gradients(loss, all_params_node)
     all_grad_norms_node = []
     for i in range(0, len(all_grads_node)):
         norm_grad_i = tf.global_norm([all_grads_node[i]])
         all_grad_norms_node.append(norm_grad_i)
         tf.summary.scalar(all_params_names[i], norm_grad_i)
-    
+
     # L2 regularization for the fully connected parameters.
     regularizers = (tf.nn.l2_loss(fc1_weights) + tf.nn.l2_loss(fc1_biases) +
                     tf.nn.l2_loss(fc2_weights) + tf.nn.l2_loss(fc2_biases))
     # Add the regularization term to the loss.
-    loss += 5e-4 * regularizers
+    loss += REGULARIZATION_LAMBDA * regularizers
 
     # Optimizer: set up a variable that's incremented once per batch and
     # controls the learning rate decay.
     batch = tf.Variable(0)
     # Decay once per epoch, using an exponential schedule starting at 0.01.
     learning_rate = tf.train.exponential_decay(
-        0.01,                # Base learning rate.
+        0.01,  # Base learning rate.
         batch * BATCH_SIZE,  # Current index into the dataset.
-        train_size,          # Decay step.
-        0.95,                # Decay rate.
+        train_size,  # Decay step.
+        0.95,  # Decay rate.
         staircase=True)
     # tf.scalar_summary('learning_rate', learning_rate)
     tf.summary.scalar('learning_rate', learning_rate)
-    
+
     # Use simple momentum for the optimization.
     optimizer = tf.train.MomentumOptimizer(learning_rate,
                                            0.0).minimize(loss,
@@ -522,7 +531,7 @@ def main(argv=None):  # pylint: disable=unused-argument
             pimg = get_prediction_with_groundtruth(train_data_filename, i)
             Image.fromarray(pimg).save(prediction_training_dir + "prediction_" + str(i) + ".png")
             oimg = get_prediction_with_overlay(train_data_filename, i)
-            oimg.save(prediction_training_dir + "overlay_" + str(i) + ".png")       
+            oimg.save(prediction_training_dir + "overlay_" + str(i) + ".png")
 
 
 if __name__ == '__main__':
