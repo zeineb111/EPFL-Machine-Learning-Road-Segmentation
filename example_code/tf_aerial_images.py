@@ -23,11 +23,12 @@ import tensorflow.python.platform
 
 import numpy
 import tensorflow as tf
+#import tensorflow_addons as tfa
 
 NUM_CHANNELS = 3  # RGB images
 PIXEL_DEPTH = 255
 NUM_LABELS = 2
-TRAINING_SIZE = 20
+TRAINING_SIZE = 100
 VALIDATION_SIZE = 5  # Size of the validation set.
 SEED = 66478  # Set to None for random seed.
 BATCH_SIZE = 128  # 64
@@ -35,6 +36,7 @@ NUM_EPOCHS = 100
 RESTORE_MODEL = False  # If True, restore existing model instead of training a new one
 RECORDING_STEP = 0
 REGULARIZATION_LAMBDA = 1e-6
+LEAKY_RELU_ALPHA = 0.1
 
 # Set image patch size in pixels
 # IMG_PATCH_SIZE should be a multiple of 4
@@ -45,6 +47,7 @@ tf.app.flags.DEFINE_string('train_dir', '../tmp/segment_aerial_images',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 FLAGS = tf.app.flags.FLAGS
+
 
 
 # Extract patches from a given image
@@ -85,7 +88,7 @@ def extract_data(filename, num_images):
 
     img_patches = [img_crop(imgs[i], IMG_PATCH_SIZE, IMG_PATCH_SIZE) for i in range(num_images)]
     data = [img_patches[i][j] for i in range(len(img_patches)) for j in range(len(img_patches[i]))]
-
+    print(numpy.asarray(data).shape)
     return numpy.asarray(data)
 
 
@@ -124,10 +127,16 @@ def extract_labels(filename, num_images):
 
 def error_rate(predictions, labels):
     """Return the error rate based on dense predictions and 1-hot labels."""
+    print(labels)
+    print(predictions)
     return 100.0 - (
             100.0 *
             numpy.sum(numpy.argmax(predictions, 1) == numpy.argmax(labels, 1)) /
             predictions.shape[0])
+
+#def F1_score(predictions,labels):
+#    score = tfa.metrics.F1Score(NUM_LABELS,'micro')
+ #   score.update()
 
 
 # Write predictions from neural network to a file
@@ -232,7 +241,7 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     train_size = train_labels.shape[0]
 
-    print("train_size = " + train_size)
+    print("train_size = " + str(train_size))
 
     c0 = 0
     c1 = 0
@@ -347,7 +356,7 @@ def main(argv=None):  # pylint: disable=unused-argument
                             strides=[1, 1, 1, 1],
                             padding='SAME')
         # Bias and rectified linear non-linearity.
-        relu = tf.nn.relu(tf.nn.bias_add(conv, conv1_biases))
+        relu = tf.nn.leaky_relu(tf.nn.bias_add(conv, conv1_biases),LEAKY_RELU_ALPHA)
         # Max pooling. The kernel size spec {ksize} also follows the layout of
         # the data. Here we have a pooling window of 2, and a stride of 2.
         pool = tf.nn.max_pool(relu,
@@ -359,7 +368,7 @@ def main(argv=None):  # pylint: disable=unused-argument
                              conv2_weights,
                              strides=[1, 1, 1, 1],
                              padding='SAME')
-        relu2 = tf.nn.relu(tf.nn.bias_add(conv2, conv2_biases))
+        relu2 = tf.nn.leaky_relu(tf.nn.bias_add(conv2, conv2_biases),LEAKY_RELU_ALPHA)
         pool2 = tf.nn.max_pool(relu2,
                                ksize=[1, 2, 2, 1],
                                strides=[1, 2, 2, 1],
@@ -382,11 +391,11 @@ def main(argv=None):  # pylint: disable=unused-argument
             [pool_shape[0], pool_shape[1] * pool_shape[2] * pool_shape[3]])
         # Fully connected layer. Note that the '+' operation automatically
         # broadcasts the biases.
-        hidden = tf.nn.relu(tf.matmul(reshape, fc1_weights) + fc1_biases)
+        hidden = tf.nn.leaky_relu(tf.matmul(reshape, fc1_weights) + fc1_biases,LEAKY_RELU_ALPHA)
         # Add a 50% dropout during training only. Dropout also scales
         # activations such that no rescaling is needed at evaluation time.
-        # if train:
-        #    hidden = tf.nn.dropout(hidden, 0.5, seed=SEED)
+        if train:
+            hidden = tf.nn.dropout(hidden, 0.5, seed=SEED)
         out = tf.matmul(hidden, fc2_weights) + fc2_biases
 
         if train:
@@ -479,6 +488,9 @@ def main(argv=None):  # pylint: disable=unused-argument
 
             training_indices = range(train_size)
 
+            all_predictions = []
+            all_labels= []
+
             for iepoch in range(num_epochs):
 
                 # Permute training indices
@@ -512,12 +524,16 @@ def main(argv=None):  # pylint: disable=unused-argument
                         print('Minibatch error: %.1f%%' % error_rate(predictions,
                                                                      batch_labels))
 
+
                         sys.stdout.flush()
                     else:
                         # Run the graph and fetch some of the nodes.
                         _, l, lr, predictions = s.run(
                             [optimizer, loss, learning_rate, train_prediction],
                             feed_dict=feed_dict)
+
+                    all_predictions.append(predictions)
+                    all_labels.append(batch_labels)
 
                 # Save the variables to disk.
                 save_path = saver.save(s, FLAGS.train_dir + "/model.ckpt")
