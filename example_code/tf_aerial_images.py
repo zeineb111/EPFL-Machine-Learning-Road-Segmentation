@@ -415,6 +415,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     # Training computation: logits + cross-entropy loss.
     logits = model(train_data_node, True)  # BATCH_SIZE*NUM_LABELS
     # print 'logits = ' + str(logits.get_shape()) + ' train_labels_node = ' + str(train_labels_node.get_shape())
+    print("Logits is ", logits)
 
     loss = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits_v2(labels=train_labels_node,
