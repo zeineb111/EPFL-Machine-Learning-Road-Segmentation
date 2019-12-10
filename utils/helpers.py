@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 
 from PIL import Image
@@ -54,7 +56,7 @@ def img_float_to_uint8(img, pixel_depth):
     return rimg
 
 
-def concatenate_images(img, gt_img):
+def concatenate_images(img, gt_img, pixel_depth):
     n_channels = len(gt_img.shape)
     w = gt_img.shape[0]
     h = gt_img.shape[1]
@@ -62,11 +64,11 @@ def concatenate_images(img, gt_img):
         cimg = np.concatenate((img, gt_img), axis=1)
     else:
         gt_img_3c = np.zeros((w, h, 3), dtype=np.uint8)
-        gt_img8 = img_float_to_uint8(gt_img)
+        gt_img8 = img_float_to_uint8(gt_img, pixel_depth)
         gt_img_3c[:, :, 0] = gt_img8
         gt_img_3c[:, :, 1] = gt_img8
         gt_img_3c[:, :, 2] = gt_img8
-        img8 = img_float_to_uint8(img)
+        img8 = img_float_to_uint8(img, pixel_depth)
         cimg = np.concatenate((img8, gt_img_3c), axis=1)
     return cimg
 
@@ -77,7 +79,7 @@ def make_img_overlay(img, predicted_img, pixel_depth):
     color_mask = np.zeros((w, h, 3), dtype=np.uint8)
     color_mask[:, :, 0] = predicted_img * pixel_depth
 
-    img8 = img_float_to_uint8(img)
+    img8 = img_float_to_uint8(img, pixel_depth)
     background = Image.fromarray(img8, 'RGB').convert("RGBA")
     overlay = Image.fromarray(color_mask, 'RGB').convert("RGBA")
     new_img = Image.blend(background, overlay, 0.2)
@@ -153,7 +155,7 @@ def extract_data(filename, num_images, img_patch_size):
 
 
 # Extract label images
-def extract_labels(filename, num_images,img_patch_size):
+def extract_labels(filename, num_images, img_patch_size):
     """Extract the labels into a 1-hot matrix [image index, label index]."""
     gt_imgs = []
     for i in range(1, num_images + 1):
