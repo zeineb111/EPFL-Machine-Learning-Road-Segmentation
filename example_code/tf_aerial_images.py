@@ -145,7 +145,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         img = mpimg.imread(image_filename)
 
         img_prediction = get_prediction(img)
-        cimg = concatenate_images(img, img_prediction)
+        cimg = concatenate_images(img, img_prediction, PIXEL_DEPTH)
 
         return cimg
 
