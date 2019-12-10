@@ -475,8 +475,8 @@ def main(argv=None):  # pylint: disable=unused-argument
 
             training_indices = range(train_size)
 
-            precisions = []
-            recalls = []
+            preds = []
+            labels = []
 
             for iepoch in range(num_epochs):
 
@@ -518,17 +518,15 @@ def main(argv=None):  # pylint: disable=unused-argument
                             [optimizer, loss, learning_rate, train_prediction],
                             feed_dict=feed_dict)
 
-                    precision, recall = precision_recall(predictions, batch_labels)
-
-                    precisions.append(precision)
-                    recalls.append(recall)
+                    pred, batch_labels = one_hot_to_binary(predictions), one_hot_to_binary(batch_labels)
+                    preds.append(pred)
+                    labels.append(batch_labels)
 
                     # Save the variables to disk.
                 save_path = saver.save(s, FLAGS.train_dir + "/model.ckpt")
                 print("Model saved in file: %s" % save_path)
-
-        print("precision : %.3f " % np.average(np.asarray(precisions)))
-        print("recall : %.3f " % np.average(np.asarray(recalls)))
+                
+        f1_score = score(np.ndarray.flatten(np.asarray(preds)), np.ndarray.flatten(np.asarray(labels)))
         print("Running prediction on training set")
         prediction_training_dir = "predictions_training/"
         if not os.path.isdir(prediction_training_dir):

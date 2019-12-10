@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.metrics import *
 
 
 def error_rate(predictions, labels):
@@ -11,30 +12,21 @@ def error_rate(predictions, labels):
 
 def precision_recall(predictions, labels):
     """ Compute the precision and the recall from dense predictions and 1-hot labels"""
-    n_fp = 1.0  # False postives
-    n_fn = 1.0  # False negatives
-    n_tp = 1.0  # True positives
-    n_tn = 1.0  # True negatives
-    pred = np.around(predictions)
-    pred_label_stack = np.column_stack((pred, labels))
+    # linearize matrices
+    y_pred = one_hot_to_binary(predictions)
+    y_true = one_hot_to_binary(labels)
 
-    for row in pred_label_stack:
-        if ~((row - [0, 1, 1, 0]).any()):
-            n_fp += 1
-        elif ~((row - [1, 0, 0, 1]).any()):
-            n_fn += 1
-        elif ~((row - [0, 1, 0, 1]).any()):
-            n_tp += 1
-        else:
-            n_tn += 1
-
-    precision = n_tp / (n_tp + n_fp)
-    recall = n_tp / (n_tp + n_fn)
+    precision = precision_score(y_true, y_pred)
+    recall = recall_score(y_true, y_pred)
 
     return precision, recall
 
 
-def f1_score(precision, recall):
+def score(preds, labels):
     """ Compute the f1 score from the given precision and recall"""
 
-    return 2 * precision * recall / (precision + recall)
+    return f1_score(labels, preds)
+
+
+def one_hot_to_binary(array):
+    return np.around(np.argmax(array, 1))
