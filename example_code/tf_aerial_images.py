@@ -27,11 +27,11 @@ import tensorflow as tf
 NUM_CHANNELS = 3  # RGB images
 PIXEL_DEPTH = 255
 NUM_LABELS = 2
-TRAINING_SIZE = 100
+TRAINING_SIZE = 10
 VALIDATION_SIZE = 5  # Size of the validation set.
 SEED = 66478  # Set to None for random seed.
 BATCH_SIZE = 128  # 64
-NUM_EPOCHS = 100
+NUM_EPOCHS = 10
 RESTORE_MODEL = False  # If True, restore existing model instead of training a new one
 RECORDING_STEP = 0
 REGULARIZATION_LAMBDA = 1e-6
@@ -52,14 +52,19 @@ FLAGS = tf.app.flags.FLAGS
 def main(argv=None):  # pylint: disable=unused-argument
 
     data_dir = '../data/training/'
-    train_data_filename = data_dir + 'images/raw/'
-    train_labels_filename = data_dir + 'groundtruth/raw/'
+    train_data_filename = data_dir + 'images/'
+    train_labels_filename = data_dir + 'groundtruth/'
+    img_name_prefix = "satImage_%.4d"
     num_epochs = NUM_EPOCHS
 
+    train_data, train_labels = extract_training_data(train_data_filename, train_labels_filename, TRAINING_SIZE,
+                                                     IMG_PATCH_SIZE, WINDOW_SIZE)
     # Extract it into np arrays.
-    train_data = extract_data(train_data_filename, TRAINING_SIZE, WINDOW_SIZE)  # changed IMG_PATCH_SIZE to WINDOW_SIZE
-    train_labels = extract_labels(train_labels_filename, TRAINING_SIZE, IMG_PATCH_SIZE)
-
+    # train_data = extract_data(train_data_filename, TRAINING_SIZE, IMG_PATCH_SIZE)  # changed IMG_PATCH_SIZE to WINDOW_SIZE
+    # train_labels = extract_labels(train_labels_filename, TRAINING_SIZE, IMG_PATCH_SIZE)
+    print(train_data.shape)
+    print(train_labels.shape)
+    # print(train_data)
     balance_data(train_data, train_labels)
 
     # This is where training samples and labels are fed to the graph.
@@ -67,7 +72,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     # training step using the {feed_dict} argument to the Run() call below.
     train_data_node = tf.placeholder(
         tf.float32,
-        shape=(BATCH_SIZE, IMG_PATCH_SIZE, IMG_PATCH_SIZE, NUM_CHANNELS))
+        shape=(BATCH_SIZE, WINDOW_SIZE, WINDOW_SIZE, NUM_CHANNELS))
     train_labels_node = tf.placeholder(tf.float32,
                                        shape=(BATCH_SIZE, NUM_LABELS))
     train_all_data_node = tf.constant(train_data)
@@ -81,12 +86,13 @@ def main(argv=None):  # pylint: disable=unused-argument
                             seed=SEED))
     conv1_biases = tf.Variable(tf.zeros([64]))
     conv2_weights = tf.Variable(
-        tf.truncated_normal([5, 5, 64, 128],
+        tf.truncated_normal([3, 3, 64, 128],
                             stddev=0.1,
                             seed=SEED))
     conv2_biases = tf.Variable(tf.constant(0.1, shape=[128]))
+
     fc1_weights = tf.Variable(  # fully connected, depth 512.
-        tf.truncated_normal([int(IMG_PATCH_SIZE / 4 * IMG_PATCH_SIZE / 4 * 128), 512],
+        tf.truncated_normal([int(WINDOW_SIZE / 4 * WINDOW_SIZE / 4 * 128), 512],
                             stddev=0.1,
                             seed=SEED))
     fc1_biases = tf.Variable(tf.constant(0.1, shape=[512]))
@@ -99,7 +105,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     # Get prediction for given input image
 
     def get_prediction(img):
-        data = np.asarray(img_crop(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE))
+        data = np.asarray(img_crop_windows(img, WINDOW_SIZE, IMG_PATCH_SIZE))
         data_node = tf.constant(data)
         output = tf.nn.softmax(model(data_node))
         output_prediction = s.run(output)
@@ -110,7 +116,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         # Get a concatenation of the prediction and groundtruth for given input file
 
     def get_prediction_with_groundtruth(filename, image_idx):
-        imageid = "satImage_%.3d" % image_idx
+        imageid = img_name_prefix % image_idx
         image_filename = filename + imageid + ".png"
         img = mpimg.imread(image_filename)
 
@@ -121,7 +127,7 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     # Get prediction overlaid on the original image for given input file
     def get_prediction_with_overlay(filename, image_idx, pixel_depth):
-        imageid = "satImage_%.3d" % image_idx
+        imageid = img_name_prefix % image_idx
         image_filename = filename + imageid + ".png"
         img = mpimg.imread(image_filename)
 
@@ -161,13 +167,13 @@ def main(argv=None):  # pylint: disable=unused-argument
                                padding='SAME')
 
         # Uncomment these lines to check the size of each layer
-        # print('data ' + str(data.get_shape()))
-        # print('conv ' + str(conv.get_shape()))
-        # print('relu ' + str(relu.get_shape()))
+        print('data ' + str(data.get_shape()))
+        print('conv ' + str(conv.get_shape()))
+        print('relu ' + str(relu.get_shape()))
 
-        # print('pool ' + str(pool.get_shape()))
+        print('pool ' + str(pool.get_shape()))
 
-        # print('pool2 ' + str(pool2.get_shape()))
+        print('pool2 ' + str(pool2.get_shape()))
 
         # Reshape the feature map cuboid into a 2D matrix to feed it to the
         # fully connected layers.
@@ -279,6 +285,7 @@ def main(argv=None):  # pylint: disable=unused-argument
 
             preds = []
             labels = []
+            errors = []
 
             for iepoch in range(num_epochs):
 
@@ -308,11 +315,12 @@ def main(argv=None):  # pylint: disable=unused-argument
                         summary_writer.add_summary(summary_str, iepoch * steps_per_epoch)
                         summary_writer.flush()
 
+                        error = error_rate(predictions, batch_labels)
+                        errors.append(error)
+
                         print('Epoch %d' % iepoch)
                         print('Minibatch loss: %.3f, learning rate: %.6f' % (l, lr))
-                        print('Minibatch error: %.1f%%' % error_rate(predictions,
-                                                                     batch_labels))
-
+                        print('Minibatch error: %.1f%%' % error)
                         sys.stdout.flush()
                     else:
                         # Run the graph and fetch some of the nodes.
@@ -329,7 +337,10 @@ def main(argv=None):  # pylint: disable=unused-argument
                 print("Model saved in file: %s" % save_path)
 
         f1_score = score(np.ndarray.flatten(np.asarray(preds)), np.ndarray.flatten(np.asarray(labels)))
+        print("f1_score : %.3f " % f1_score)
+        print("global error rate : %.3f " % np.average(np.asarray(errors)))
         print("Running prediction on training set")
+
         prediction_training_dir = "predictions_training/"
         if not os.path.isdir(prediction_training_dir):
             os.mkdir(prediction_training_dir)

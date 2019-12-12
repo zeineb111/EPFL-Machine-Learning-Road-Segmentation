@@ -128,31 +128,27 @@ def img_crop(im, w, h):
     return list_patches
 
 
-# Testing with squares only
-def img_to_patches_windows(im, gt, window_size, patch_size):
+def img_crop_windows(im, window_size, patch_size):
     # padding
-    padding_size = (window_size - patch_size) / 2
-    padded_im = np.pad(im, padding_size)
+    padding_size = int((window_size - patch_size) / 2)
+    padded_im = np.pad(im, ((padding_size, padding_size), (padding_size, padding_size), (0, 0)))  # pad with 0s
 
     width = im.shape[0]
     height = im.shape[1]
 
-    list_patches_gt = []
     list_windows = []
     for i in range(0, height, patch_size):
         for j in range(0, width, patch_size):
-            gt_patch = gt[j:j + patch_size, i:i + patch_size]
-            list_patches_gt.append(gt_patch)
             im_window = padded_im[j:j + window_size, i:i + window_size, :]
             list_windows.append(im_window)
-    return list_windows, list_patches_gt
+    return list_windows
 
 
 def extract_training_data(train_dir, gt_dir, num_images, img_patch_size, img_window_size):
     imgs = []
     imgs_gt = []
     for i in range(1, num_images + 1):
-        imageid = "satImage_%.3d" % i
+        imageid = "satImage_%.4d" % i
         tr_image_filename = train_dir + imageid + ".png"
         gt_image_filename = gt_dir + imageid + ".png"
         if os.path.isfile(tr_image_filename):
@@ -170,8 +166,12 @@ def extract_training_data(train_dir, gt_dir, num_images, img_patch_size, img_win
 
     num_images = len(imgs)
 
-    patches_windows = [img_to_patches_windows(imgs[i],imgs_gt[i],img_window_size,img_patch_size) for i in range(num_images)]
-    print(patches_windows.shape)
+    windows = [img_crop_windows(imgs[i], img_window_size, img_patch_size) for i in range(num_images)]
+    windows_data = [windows[i][j] for i in range(len(windows)) for j in range(len(windows[i]))]
+    patches_gt = [img_crop(imgs[i], img_patch_size, img_patch_size) for i in range(num_images)]
+    patches_gt_data = [patches_gt[i][j] for i in range(len(patches_gt)) for j in range(len(patches_gt[i]))]
+    labels = np.asarray([value_to_class(np.mean(patches_gt_data[i])) for i in range(len(patches_gt_data))])
+    return np.asarray(windows_data), labels.astype(np.float32)
 
 
 def extract_data(filename, num_images, img_patch_size):
@@ -180,7 +180,7 @@ def extract_data(filename, num_images, img_patch_size):
     """
     imgs = []
     for i in range(1, num_images + 1):
-        imageid = "satImage_%.3d" % i
+        imageid = "satImage_%.4d" % i
         image_filename = filename + imageid + ".png"
         if os.path.isfile(image_filename):
             print('Loading ' + image_filename)
@@ -196,7 +196,7 @@ def extract_data(filename, num_images, img_patch_size):
 
     img_patches = [img_crop(imgs[i], img_patch_size, img_patch_size) for i in range(num_images)]
     data = [img_patches[i][j] for i in range(len(img_patches)) for j in range(len(img_patches[i]))]
-    print(np.asarray(data).shape)
+
     return np.asarray(data)
 
 
@@ -205,7 +205,7 @@ def extract_labels(filename, num_images, img_patch_size):
     """Extract the labels into a 1-hot matrix [image index, label index]."""
     gt_imgs = []
     for i in range(1, num_images + 1):
-        imageid = "satImage_%.3d" % i
+        imageid = "satImage_%.4d" % i
         image_filename = filename + imageid + ".png"
         if os.path.isfile(image_filename):
             print('Loading ' + image_filename)
@@ -242,8 +242,6 @@ def balance_data(train_data, train_labels):
     print(train_data.shape)
     train_data = train_data[new_indices, :, :, :]
     train_labels = train_labels[new_indices]
-
-
 
     c0 = 0
     c1 = 0
