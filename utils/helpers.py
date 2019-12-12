@@ -128,6 +128,52 @@ def img_crop(im, w, h):
     return list_patches
 
 
+# Testing with squares only
+def img_to_patches_windows(im, gt, window_size, patch_size):
+    # padding
+    padding_size = (window_size - patch_size) / 2
+    padded_im = np.pad(im, padding_size)
+
+    width = im.shape[0]
+    height = im.shape[1]
+
+    list_patches_gt = []
+    list_windows = []
+    for i in range(0, height, patch_size):
+        for j in range(0, width, patch_size):
+            gt_patch = gt[j:j + patch_size, i:i + patch_size]
+            list_patches_gt.append(gt_patch)
+            im_window = padded_im[j:j + window_size, i:i + window_size, :]
+            list_windows.append(im_window)
+    return list_windows, list_patches_gt
+
+
+def extract_training_data(train_dir, gt_dir, num_images, img_patch_size, img_window_size):
+    imgs = []
+    imgs_gt = []
+    for i in range(1, num_images + 1):
+        imageid = "satImage_%.3d" % i
+        tr_image_filename = train_dir + imageid + ".png"
+        gt_image_filename = gt_dir + imageid + ".png"
+        if os.path.isfile(tr_image_filename):
+            print('Loading ' + tr_image_filename)
+            img = mpimg.imread(tr_image_filename)
+            imgs.append(img)
+        else:
+            print('File ' + tr_image_filename + ' does not exist')
+        if os.path.isfile(gt_image_filename):
+            print('Loading ' + gt_image_filename)
+            img_gt = mpimg.imread(gt_image_filename)
+            imgs_gt.append(img_gt)
+        else:
+            print('File ' + gt_image_filename + ' does not exist')
+
+    num_images = len(imgs)
+
+    patches_windows = [img_to_patches_windows(imgs[i],imgs_gt[i],img_window_size,img_patch_size) for i in range(num_images)]
+    print(patches_windows.shape)
+
+
 def extract_data(filename, num_images, img_patch_size):
     """Extract the images into a 4D tensor [image index, y, x, channels].
     Values are rescaled from [0, 255] down to [-0.5, 0.5].
@@ -175,3 +221,35 @@ def extract_labels(filename, num_images, img_patch_size):
 
     # Convert to dense 1-hot representation.
     return labels.astype(np.float32)
+
+
+def balance_data(train_data, train_labels):
+    c0 = 0  # bgrd
+    c1 = 0  # road
+    for i in range(len(train_labels)):
+        if train_labels[i][0] == 1:
+            c0 = c0 + 1
+        else:
+            c1 = c1 + 1
+    print('Number of data points per class: c0 = ' + str(c0) + ' c1 = ' + str(c1))
+
+    print('Balancing training data...')
+    min_c = min(c0, c1)
+    idx0 = [i for i, j in enumerate(train_labels) if j[0] == 1]
+    idx1 = [i for i, j in enumerate(train_labels) if j[1] == 1]
+    new_indices = idx0[0:min_c] + idx1[0:min_c]
+    print(len(new_indices))
+    print(train_data.shape)
+    train_data = train_data[new_indices, :, :, :]
+    train_labels = train_labels[new_indices]
+
+
+
+    c0 = 0
+    c1 = 0
+    for i in range(len(train_labels)):
+        if train_labels[i][0] == 1:
+            c0 = c0 + 1
+        else:
+            c1 = c1 + 1
+    print('Number of data points per class: c0 = ' + str(c0) + ' c1 = ' + str(c1))

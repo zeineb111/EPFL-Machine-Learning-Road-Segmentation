@@ -27,15 +27,16 @@ import tensorflow as tf
 NUM_CHANNELS = 3  # RGB images
 PIXEL_DEPTH = 255
 NUM_LABELS = 2
-TRAINING_SIZE = 20
+TRAINING_SIZE = 100
 VALIDATION_SIZE = 5  # Size of the validation set.
 SEED = 66478  # Set to None for random seed.
 BATCH_SIZE = 128  # 64
-NUM_EPOCHS = 2
+NUM_EPOCHS = 100
 RESTORE_MODEL = False  # If True, restore existing model instead of training a new one
 RECORDING_STEP = 0
 REGULARIZATION_LAMBDA = 1e-6
 LEAKY_RELU_ALPHA = 0.1
+WINDOW_SIZE = 72
 
 # Set image patch size in pixels
 # IMG_PATCH_SIZE should be a multiple of 4
@@ -51,46 +52,15 @@ FLAGS = tf.app.flags.FLAGS
 def main(argv=None):  # pylint: disable=unused-argument
 
     data_dir = '../data/training/'
-    train_data_filename = data_dir + 'images/'
-    train_labels_filename = data_dir + 'groundtruth/'
-
-    # Extract it into np arrays.
-    train_data = extract_data(train_data_filename, TRAINING_SIZE, IMG_PATCH_SIZE)
-    train_labels = extract_labels(train_labels_filename, TRAINING_SIZE, IMG_PATCH_SIZE)
-
+    train_data_filename = data_dir + 'images/raw/'
+    train_labels_filename = data_dir + 'groundtruth/raw/'
     num_epochs = NUM_EPOCHS
 
-    c0 = 0  # bgrd
-    c1 = 0  # road
-    for i in range(len(train_labels)):
-        if train_labels[i][0] == 1:
-            c0 = c0 + 1
-        else:
-            c1 = c1 + 1
-    print('Number of data points per class: c0 = ' + str(c0) + ' c1 = ' + str(c1))
+    # Extract it into np arrays.
+    train_data = extract_data(train_data_filename, TRAINING_SIZE, WINDOW_SIZE)  # changed IMG_PATCH_SIZE to WINDOW_SIZE
+    train_labels = extract_labels(train_labels_filename, TRAINING_SIZE, IMG_PATCH_SIZE)
 
-    print('Balancing training data...')
-    min_c = min(c0, c1)
-    idx0 = [i for i, j in enumerate(train_labels) if j[0] == 1]
-    idx1 = [i for i, j in enumerate(train_labels) if j[1] == 1]
-    new_indices = idx0[0:min_c] + idx1[0:min_c]
-    print(len(new_indices))
-    print(train_data.shape)
-    train_data = train_data[new_indices, :, :, :]
-    train_labels = train_labels[new_indices]
-
-    train_size = train_labels.shape[0]
-
-    print("train_size = " + str(train_size))
-
-    c0 = 0
-    c1 = 0
-    for i in range(len(train_labels)):
-        if train_labels[i][0] == 1:
-            c0 = c0 + 1
-        else:
-            c1 = c1 + 1
-    print('Number of data points per class: c0 = ' + str(c0) + ' c1 = ' + str(c1))
+    balance_data(train_data, train_labels)
 
     # This is where training samples and labels are fed to the graph.
     # These placeholder nodes will be fed a batch of training data at each
@@ -191,13 +161,13 @@ def main(argv=None):  # pylint: disable=unused-argument
                                padding='SAME')
 
         # Uncomment these lines to check the size of each layer
-        print('data ' + str(data.get_shape()))
-        print('conv ' + str(conv.get_shape()))
-        print('relu ' + str(relu.get_shape()))
+        # print('data ' + str(data.get_shape()))
+        # print('conv ' + str(conv.get_shape()))
+        # print('relu ' + str(relu.get_shape()))
 
-        print('pool ' + str(pool.get_shape()))
+        # print('pool ' + str(pool.get_shape()))
 
-        print('pool2 ' + str(pool2.get_shape()))
+        # print('pool2 ' + str(pool2.get_shape()))
 
         # Reshape the feature map cuboid into a 2D matrix to feed it to the
         # fully connected layers.
@@ -228,6 +198,9 @@ def main(argv=None):  # pylint: disable=unused-argument
             tf.summary.image('summary_pool2' + summary_id, s_pool2, max_outputs=3)
         return out
 
+    train_size = train_labels.shape[0]
+
+    print("train_size = " + str(train_size))
     # Training computation: logits + cross-entropy loss.
     logits = model(train_data_node, True)  # BATCH_SIZE*NUM_LABELS
     # print 'logits = ' + str(logits.get_shape()) + ' train_labels_node = ' + str(train_labels_node.get_shape())
@@ -369,4 +342,4 @@ def main(argv=None):  # pylint: disable=unused-argument
 
 
 if __name__ == '__main__':
-    tf.app.run()
+    tf.compat.v1.app.run()
