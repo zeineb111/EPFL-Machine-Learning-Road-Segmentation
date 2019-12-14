@@ -191,3 +191,5 @@ Temporary Items
 
 .idea
 data/
+data_test/
+predictions/
