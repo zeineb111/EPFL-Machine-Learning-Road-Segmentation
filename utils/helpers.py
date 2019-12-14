@@ -57,11 +57,34 @@ def img_float_to_uint8(img):
     return rimg
 
 
-def load_data(data_path):
+def load_data(data_path, test):
     files = os.listdir(data_path)
     n = len(files)
 
-    print("Loading " + str(n) + " images")
-    imgs = [load_image(data_path + files[i]) for i in range(n)]
+    if test:
+        imgs = [load_image(data_path + '/' + files[i]) for i in range(n)]
+    else:
+        imgs = [load_image(data_path + files[i]) for i in range(n)]
 
     return np.asarray(imgs)
+
+
+def img_predict(img, model):
+    width = img.shape[0]
+    height = img.shape[1]
+    img1 = img[:400, :400]
+    img2 = img[:400, -400:]
+    img3 = img[-400:, :400]
+    img4 = img[-400:, -400:]
+
+    imgs = np.array([img1, img2, img3, img4])
+    predictions = model.predict(imgs)
+
+    prediction = np.zeros((width, height, 1))
+
+    prediction[:400, :400] = predictions[0]
+    prediction[:400, -400:] = predictions[1]
+    prediction[-400:, :400] = predictions[2]
+    prediction[-400:, -400:] = predictions[3]
+
+    return prediction
