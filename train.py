@@ -17,17 +17,18 @@ NUM_EPOCHS = 200
 
 
 def main(argv=None):
+
     image_dir = ROOT_DIR + "images/"
+    gt_dir = ROOT_DIR + "groundtruth/"
+
     files = os.listdir(image_dir)
-    n = len(files)  # Load maximum 20 images
+    n = len(files)
+
     print("Loading " + str(n) + " images")
     imgs = [load_image(image_dir + files[i]) for i in range(n)]
-    print(files[0])
 
-    gt_dir = ROOT_DIR + "groundtruth/"
-    print("Loading " + str(n) + " images")
+    print("Loading " + str(n) + " groundtruth images")
     gt_imgs = [load_image(gt_dir + files[i]) for i in range(n)]
-    print(files[0])
 
     x_train = np.asarray(imgs)
     y_train = np.expand_dims(np.asarray(gt_imgs), axis=3)

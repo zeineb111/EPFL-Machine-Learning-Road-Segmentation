@@ -57,14 +57,11 @@ def img_float_to_uint8(img):
     return rimg
 
 
-def load_data(data_path, test):
+def load_data(data_path):
     files = os.listdir(data_path)
     n = len(files)
 
-    if test:
-        imgs = [load_image(data_path + '/' + files[i]) for i in range(n)]
-    else:
-        imgs = [load_image(data_path + files[i]) for i in range(n)]
+    imgs = [load_image(data_path + '/' + files[i]) for i in range(n)]
 
     return np.asarray(imgs)
 
