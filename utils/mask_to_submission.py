@@ -9,6 +9,7 @@ foreground_threshold = (
     0.25
 )  # percentage of pixels > 1 required to assign a foreground label to a patch
 
+
 # assign a label to a patch
 def patch_to_label(patch):
     df = np.mean(patch)
@@ -25,9 +26,9 @@ def mask_to_submission_strings(image_filename):
     patch_size = 16
     for j in range(0, im.shape[1], patch_size):
         for i in range(0, im.shape[0], patch_size):
-            patch = im[i : i + patch_size, j : j + patch_size]
+            patch = im[i: i + patch_size, j: j + patch_size]
             label = patch_to_label(patch)
-            yield ("{:03d}_{}_{},{}".format(img_number, j, i, label))
+            yield "{:03d}_{}_{},{}".format(img_number, j, i, label)
 
 
 def masks_to_submission(submission_filename, *image_filenames):
