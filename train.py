@@ -5,11 +5,11 @@ from src.unet_keras import *
 from utils.helpers import *
 
 # Loaded a set of images
-root_dir = "/content/drive/My Drive/EPFL-Machine-Learning-Road-Segmentation/data/training/"
+root_dir = "/content/drive/My Drive/Road_Segmentation/data/training/"
 
 image_dir = root_dir + "images/"
 files = os.listdir(image_dir)
-n = min(100, len(files)) # Load maximum 20 images
+n = len(files) # Load maximum 20 images
 print("Loading " + str(n) + " images")
 imgs = [load_image(image_dir + files[i]) for i in range(n)]
 print(files[0])
@@ -22,14 +22,11 @@ print(files[0])
 x = np.asarray(imgs)
 y = np.expand_dims(np.asarray(gt_imgs), axis=3)
 
-x_train = x[:50]
-y_train = y[:50]
+x_train = x[:800]
+y_train = y[:800]
 
-x_val = x[50:70]
-y_val = y[50:70]
-
-x_test = x[70:]
-y_test = y[70:]
+x_val = x[800:]
+y_val = y[800:]
 
 IMG_SIZE = 400
 NUM_CHANNELS = 3
@@ -37,7 +34,7 @@ NUM_FILTER = 32
 FILTER_SIZE = 3
 
 BATCH_SIZE = 16
-NUM_EPOCHS = 100
+NUM_EPOCHS = 1000
 
 # Create Model
 model = unet_model(IMG_SIZE, NUM_CHANNELS, NUM_FILTER, FILTER_SIZE)
