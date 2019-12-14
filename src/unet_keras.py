@@ -77,12 +77,12 @@ def unet_model(img_size, n_channel, n_filter, filter_size, leaky=False, dropout=
     inputs = tf.keras.layers.Input((img_size, img_size, n_channel))
     outputs = unet(inputs, n_filter, filter_size, leaky, dropout)
     model = tf.keras.Model(inputs=[inputs], outputs=[outputs])
-    model.compile(optimizer=tf.keras.optimizers.Adam(), loss='binary_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer=tf.keras.optimizers.Adam(), loss='binary_crossentropy', metrics=['Precision', 'Recall'])
     return model
 
 
-def train_model(model, x_train, y_train, x_val, y_val, batch_size, n_epochs):
-    history = model.fit(x_train, y_train, batch_size=batch_size, epochs=n_epochs, validation_data=(x_val, y_val))
+def train_model(model, x_train, y_train, batch_size, n_epochs):
+    history = model.fit(x_train, y_train, batch_size=batch_size, epochs=n_epochs)
     print('\nhistory dict:', history.history)
     return model
 
