@@ -1,6 +1,10 @@
 # Helper functions
+import os
+
 import matplotlib.image as mpimg
 import numpy as np
+
+PIXEL_DEPTH = 255
 
 
 def load_image(infilename):
@@ -45,3 +49,19 @@ def img_crop(im, w, h):
                 im_patch = im[j:j + w, i:i + h, :]
             list_patches.append(im_patch)
     return list_patches
+
+
+def img_float_to_uint8(img):
+    rimg = img - np.min(img)
+    rimg = (rimg / np.max(rimg) * PIXEL_DEPTH).round().astype(np.uint8)
+    return rimg
+
+
+def load_data(data_path):
+    files = os.listdir(data_path)
+    n = len(files)
+
+    print("Loading " + str(n) + " images")
+    imgs = [load_image(data_path + files[i]) for i in range(n)]
+
+    return np.asarray(imgs)
