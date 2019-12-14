@@ -18,16 +18,16 @@ def main(argv=None):
     model = tf.keras.models.load_model(PATH_MODEL)
 
     images_filenames = []
-
     predictions = []
+
     for i in range(TEST_SIZE):
         path_folder = PATH_DATA + '/test_' + str(i + 1)
-        img = load_data(path_folder, test=True)
+        img = load_data(path_folder)
         prediction = img_predict(np.squeeze(img), model)
         predictions.append(prediction)
 
     try:
-        # Create target Directory
+        # Create predictions directory
         os.mkdir(PATH + PATH_PREDICTION_DIR)
         print('Directory ', '"predictions"', ' Created ')
     except FileExistsError:
