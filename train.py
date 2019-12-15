@@ -1,5 +1,6 @@
 
 import os
+import matplotlib.pyplot as plt
 
 from src.unet_keras import *
 from utils.helpers import *
@@ -13,7 +14,7 @@ NUM_FILTER = 32
 FILTER_SIZE = 3
 
 BATCH_SIZE = 16
-NUM_EPOCHS = 200
+NUM_EPOCHS = 10
 
 
 def main(argv=None):
@@ -34,16 +35,22 @@ def main(argv=None):
     y_train = np.expand_dims(np.asarray(gt_imgs), axis=3)
 
     # Create Model
-    model = unet_model(IMG_SIZE, NUM_CHANNELS, NUM_FILTER, FILTER_SIZE, leaky=True, dropout=0.5)
+    model = unet_model(IMG_SIZE, NUM_CHANNELS, NUM_FILTER, FILTER_SIZE, dropout=0.5)
 
     # Run Model
-    model = train_model(model, x_train, y_train, BATCH_SIZE, NUM_EPOCHS)
+    model, f1_scores = train_model(model, x_train, y_train, BATCH_SIZE, NUM_EPOCHS)
 
     # Save the trained model
     print('Saving trained model')
-    new_model_filename = 'unet_leaky_0val_50drop_200epo.h5'
+    new_model_filename = 'unet_test.h5'
     model.save(new_model_filename)
 
+    plt.plot(f1_scores)
+    plt.xlabel('# epochs')
+    plt.ylabel('F1-Score')
+    plt.title('F1-Score for every epochs')
+    plt.savefig('F1-Scores.png')
+    
 
 if __name__ == '__main__':
     tf.app.run()

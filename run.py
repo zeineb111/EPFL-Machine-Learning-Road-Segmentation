@@ -4,7 +4,7 @@ from utils.mask_to_submission import *
 from PIL import Image
 
 PATH = '/content/drive/My Drive/Road_Segmentation'
-PATH_MODEL = '/content/unet_leaky_0val_50drop_200epo.h5'
+PATH_MODEL = '/content/unet_relu_0val_50drop_200epo.h5'
 PATH_DATA = PATH + '/data/test_set_images/'
 PATH_PREDICTION_DIR = '/predictions'
 PATH_SUBMISSION = PATH + '/submission.csv'
