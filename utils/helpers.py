@@ -6,7 +6,6 @@ import numpy as np
 
 PIXEL_DEPTH = 255
 
-
 def load_image(infilename):
     data = mpimg.imread(infilename)
     return data
@@ -69,6 +68,7 @@ def load_data(data_path):
 def img_predict(img, model):
     width = img.shape[0]
     height = img.shape[1]
+
     img1 = img[:400, :400]
     img2 = img[:400, -400:]
     img3 = img[-400:, :400]
