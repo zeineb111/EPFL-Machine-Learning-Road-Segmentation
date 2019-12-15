@@ -191,5 +191,7 @@ Temporary Items
 
 .idea
 data/
+data/test_set_images/
 data_test/
 predictions/
+groundtruth/
