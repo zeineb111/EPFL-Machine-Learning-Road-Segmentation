@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 
 
 def activation(data, leaky):
@@ -86,4 +87,12 @@ def unet_model(img_size, n_channel, n_filter, filter_size, leaky=False, dropout=
 def train_model(model, x_train, y_train, batch_size, n_epochs):
     history = model.fit(x_train, y_train, batch_size=batch_size, epochs=n_epochs, validation_split=0.0)
     print('\nhistory dict:', history.history)
-    return model
+
+    # Retrieve the values for precision and recall for each epoch
+    precision = np.array(history.history['precision'])
+    recall = np.array(history.history['recall'])
+
+    # Compute the f1_score for each epoch
+    f1_scores = 2 * precision * recall / (precision + recall)
+
+    return model, f1_scores
