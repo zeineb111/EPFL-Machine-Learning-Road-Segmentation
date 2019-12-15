@@ -121,4 +121,4 @@ def preprocess_imgs(imgs, window_size, patch_size):
     padding_size = int((window_size - patch_size) / 2)
     padded_imgs = np.asarray([pad_image(imgs[i], padding_size) for i in range(imgs.shape[0])])
 
-    return padded_imgs
+    return padded_imgs.astype('float32')/255

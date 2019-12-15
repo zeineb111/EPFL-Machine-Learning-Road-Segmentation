@@ -1,9 +1,6 @@
-import tensorflow as tf
 import tensorflow.keras as keras
-from tensorflow.keras import models, layers
-import numpy as np
-import collections
-from utils.helpers import *
+from tensorflow.keras import layers
+from src.utils.helpers import *
 
 
 class CnnModel(keras.Model):
@@ -24,12 +21,12 @@ class CnnModel(keras.Model):
         self.model = keras.Sequential()
         input_shape = (self.window_size, self.window_size, self.nb_channels)
 
-        self.model.add(layers.Convolution2D(64, 5, 5, input_shape=input_shape))
+        self.model.add(layers.Convolution2D(64, 5, 5, input_shape=input_shape, padding='same'))
         self.model.add(layers.LeakyReLU(alpha=self.leak_alpha))
         self.model.add(layers.MaxPool2D())
         self.model.add(layers.Dropout(self.dropout_prob))
 
-        self.model.add(layers.Convolution2D(128, 3, 3))
+        self.model.add(layers.Convolution2D(128, 3, 3, padding='same'))
         self.model.add(layers.LeakyReLU(alpha=self.leak_alpha))
         self.model.add(layers.MaxPool2D())
         self.model.add(layers.Dropout(self.dropout_prob))
@@ -92,11 +89,11 @@ class CnnModel(keras.Model):
         print("samples per epoch %d" % samples_per_epoch)
 
         # This callback reduces the learning rate when the training accuracy does not improve any more
-        lr_callback = keras.callbacks.ReduceLROnPlateau(monitor='accuracy', factor=0.5, patience=5,
+        lr_callback = keras.callbacks.ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5,
                                                         verbose=1, mode='auto', epsilon=0.0001, cooldown=0, min_lr=0)
 
         # Stops the training process upon convergence
-        stop_callback = keras.callbacks.EarlyStopping(monitor='accuracy', min_delta=0.0001, patience=11, verbose=1,
+        stop_callback = keras.callbacks.EarlyStopping(monitor='loss', min_delta=0.0001, patience=11, verbose=1,
                                                       mode='auto')
 
         try:
@@ -104,7 +101,7 @@ class CnnModel(keras.Model):
                                      steps_per_epoch=samples_per_epoch,
                                      epochs=nb_epochs,
                                      verbose=1,
-                                     callbacks=[lr_callback, stop_callback])
+                                     callbacks=[lr_callback, stop_callback], workers=2)
         except KeyboardInterrupt:
             # Do not throw away the model in case the user stops the training process
             pass
@@ -119,9 +116,6 @@ class CnnModel(keras.Model):
              signatures=None,
              options=None):
         self.model.save_weights(filepath)
-
-    def load_weights(self, filepath, by_name=False):
-        self.load_weights(filepath)
 
     def predict(self,
                 x,
