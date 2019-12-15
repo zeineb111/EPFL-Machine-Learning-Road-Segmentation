@@ -13,8 +13,8 @@ NUM_CHANNELS = 3
 NUM_FILTER = 32
 FILTER_SIZE = 3
 
-BATCH_SIZE = 16
-NUM_EPOCHS = 10
+BATCH_SIZE = 8
+NUM_EPOCHS = 20
 
 
 def main(argv=None):
@@ -35,14 +35,14 @@ def main(argv=None):
     y_train = np.expand_dims(np.asarray(gt_imgs), axis=3)
 
     # Create Model
-    model = unet_model(IMG_SIZE, NUM_CHANNELS, NUM_FILTER, FILTER_SIZE, dropout=0.5)
+    model = unet_model(IMG_SIZE, NUM_CHANNELS, NUM_FILTER, FILTER_SIZE, leaky=True, dropout=0.5)
 
     # Run Model
     model, f1_scores = train_model(model, x_train, y_train, BATCH_SIZE, NUM_EPOCHS)
 
     # Save the trained model
     print('Saving trained model')
-    new_model_filename = 'unet_test.h5'
+    new_model_filename = 'unet_leaky_0val_50drop_20epoch_evo.h5'
     model.save(new_model_filename)
 
     plt.plot(f1_scores)
@@ -50,7 +50,7 @@ def main(argv=None):
     plt.ylabel('F1-Score')
     plt.title('F1-Score for every epochs')
     plt.savefig('F1-Scores.png')
-    
+
 
 if __name__ == '__main__':
-    tf.app.run()
+    tf.compat.v1.app.run()
