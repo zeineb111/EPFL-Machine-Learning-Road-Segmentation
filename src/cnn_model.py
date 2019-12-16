@@ -39,19 +39,16 @@ class CnnModel(keras.Model):
         self.model.add(
             layers.Dense(self.nb_classes, kernel_regularizer=keras.regularizers.l2(self.regularization_value),
                          activation='softmax'))
+        optimizer = keras.optimizers.Adam()
+        self.model.compile(optimizer=optimizer, loss=keras.losses.binary_crossentropy,
+                       metrics=['accuracy'])
+
+        self.model.summary()
 
     def train_model(self, gt_imgs, tr_imgs, nb_epochs=100):
 
-        def softmax_categorical_crossentropy(y_true, y_pred):
-            """
-            Uses categorical cross-entropy from logits in order to improve numerical stability.
-            This is especially useful for TensorFlow (less useful for Theano).
-            """
-            return keras.backend.categorical_crossentropy(y_pred, y_true, from_logits=True)
 
-        optimizer = keras.optimizers.Adam()
-        self.model.compile(optimizer=optimizer, loss=keras.losses.binary_crossentropy,
-                           metrics=['accuracy'])
+
 
         np.random.seed(1)  # for reproducibility
 
@@ -101,7 +98,7 @@ class CnnModel(keras.Model):
                                      steps_per_epoch=samples_per_epoch,
                                      epochs=nb_epochs,
                                      verbose=1,
-                                     callbacks=[lr_callback, stop_callback], workers=2)
+                                     callbacks=[lr_callback, stop_callback], workers=1)
         except KeyboardInterrupt:
             # Do not throw away the model in case the user stops the training process
             pass
@@ -130,4 +127,4 @@ class CnnModel(keras.Model):
                                 self.patch_size)
         Y_pred = self.model.predict(X_patches)
         Y_pred = (Y_pred[:, 0] < Y_pred[:, 1]) * 1
-        return Y_pred
+        return group_patches(Y_pred,x.shape[0])
