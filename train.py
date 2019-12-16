@@ -15,7 +15,7 @@ NUM_FILTER = 32
 FILTER_SIZE = 3
 
 BATCH_SIZE = 8
-NUM_EPOCHS = 2
+NUM_EPOCHS = 1000
 
 
 def main(argv=None):
@@ -43,7 +43,7 @@ def main(argv=None):
 
     # Save the trained model
     print('Saving trained model')
-    new_model_filename = 'unet_leaky_0val_50drop_2epoch_evo.h5'
+    new_model_filename = 'unet_leaky_0val_50drop_1000epoch_evo.h5'
     model.save(PATH_ROOT + new_model_filename)
 
     plt.plot(f1_scores)
