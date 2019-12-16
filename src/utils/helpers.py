@@ -5,6 +5,7 @@ import numpy as np
 from PIL import Image
 import tensorflow as tf
 import matplotlib.image as mpimg
+import re
 
 
 # Write predictions from neural network to a file
@@ -103,6 +104,10 @@ def load_images(train_dir, gt_dir, num_images):
     return imgs, gt_imgs
 
 
+def group_patches(patches, num_images):
+    return patches.reshape(num_images, -1)
+
+
 def gen_patches(imgs, window_size, patch_size):
     padding_size = int((window_size - patch_size) / 2)
 
@@ -121,4 +126,29 @@ def preprocess_imgs(imgs, window_size, patch_size):
     padding_size = int((window_size - patch_size) / 2)
     padded_imgs = np.asarray([pad_image(imgs[i], padding_size) for i in range(imgs.shape[0])])
 
-    return padded_imgs.astype('float32')/255
+    return padded_imgs.astype('float32') / 255
+
+
+def generate_submission(model, submission_filename, *image_filenames):
+    """ Generate a .csv containing the classification of the test set. """
+    with open(submission_filename, 'w') as f:
+        f.write('id,prediction\n')
+        for fn in image_filenames[0:]:
+            f.writelines('{}\n'.format(s) for s in mask_to_submission_strings(model, fn))
+
+
+# Reads an image and  outputs the label that should go into the submission file
+def mask_to_submission_strings(model, filename):
+    img_number = int(re.search(r"\d+", filename).group(0))
+    image = load_image(filename)
+    image = image.reshape((1, image.shape[0], image.shape[1], image.shape[2]))
+    labels = model.predict(image)
+    labels = labels.reshape(-1)
+    patch_size = model.patch_size
+    count = 0
+    print("Processing image => " + filename)
+    for j in range(0, image.shape[2], patch_size):
+        for i in range(0, image.shape[1], patch_size):
+            label = int(labels[count])
+            count += 1
+            yield ("{:03d}_{}_{},{}".format(img_number, j, i, label))

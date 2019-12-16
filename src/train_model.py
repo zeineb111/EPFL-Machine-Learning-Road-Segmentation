@@ -1,5 +1,5 @@
 from src.utils.helpers import *
-from src.CnnModel import CnnModel
+from src.cnn_model import CnnModel
 
 data_dir = '../data/training/'
 train_data_filename = data_dir + 'images/'

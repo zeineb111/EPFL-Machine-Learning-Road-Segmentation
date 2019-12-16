@@ -1,7 +1,7 @@
 import tensorflow as tf
 from src.utils.helpers import *
 from src.utils.submission.mask_to_submission import *
-from src.CnnModel import CnnModel
+from src.cnn_model import CnnModel
 from PIL import Image
 
 PATH_WEIGHTS = '../weights.h5'
@@ -17,28 +17,17 @@ def main(argv=None):
     model = CnnModel()
     model.load_weights(PATH_WEIGHTS)
 
-    images_filenames = []
+    # We add all test images to an array, used later for generating a submission
+    image_filenames = []
+    for i in range(1, 51):
+        image_filenames = [PATH_TEST_DATA + 'test_' + str(i + 1) + '/' + 'test_' + str(i + 1) + '.png' for i
+                           in range(TEST_SIZE)]
 
-    predictions = [model.predict(load_image(PATH_TEST_DATA + 'test_' + str(i + 1) + '/' + 'test_' + str(i + 1))) for i
-                   in range(TEST_SIZE)]
-    try:
-        # Create target Directory
-        os.mkdir(PATH_PREDICTION_DIR)
-        print('Directory ', '"predictions"', ' Created ')
-    except FileExistsError:
-        print('Directory ', '"predictions"', ' already exists')
+    # Set-up submission filename
+    submission_filename = 'final_submission.csv'
 
-    for i in range(len(predictions)):
-        pimp = np.squeeze(predictions[i]).round()
-        pimp = img_float_to_uint8(pimp, 3)
-
-        image_filename = PATH_PREDICTION_DIR + 'pred_' + str(i + 1) + '.png'
-        Image.fromarray(pimp).save(image_filename)
-        images_filenames.append(image_filename)
-
-    # Create submission
-    submission_filename = 'submission.csv'
-    masks_to_submission(submission_filename, *images_filenames)
+    # Generates the submission
+    generate_submission(model, submission_filename, *image_filenames)
 
 
 if __name__ == '__main__':
