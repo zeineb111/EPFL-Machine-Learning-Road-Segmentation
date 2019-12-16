@@ -1,6 +1,6 @@
 import tensorflow.keras as keras
 from tensorflow.keras import layers
-from src.utils.helpers import *
+from utils.helpers import *
 
 
 class CnnModel(keras.Model):
@@ -14,25 +14,33 @@ class CnnModel(keras.Model):
         self.dropout_prob = 0.25
         self.regularization_value = 1e-6
         self.nb_classes = 2
-        self.batch_size = 25
+        self.batch_size = 256
+        keras.backend.set_image_data_format('channels_last')
         self.create_model()
+        
 
     def create_model(self):
         self.model = keras.Sequential()
         input_shape = (self.window_size, self.window_size, self.nb_channels)
+        self.model.add(layers.InputLayer(input_shape))
 
-        self.model.add(layers.Convolution2D(64, 5, 5, input_shape=input_shape, padding='same'))
+        self.model.add(layers.Conv2D(64, 5, padding='same'))
         self.model.add(layers.LeakyReLU(alpha=self.leak_alpha))
-        self.model.add(layers.MaxPool2D())
+        self.model.add(layers.MaxPool2D(padding = 'same'))
         self.model.add(layers.Dropout(self.dropout_prob))
 
-        self.model.add(layers.Convolution2D(128, 3, 3, padding='same'))
+        self.model.add(layers.Conv2D(128, 3, padding='same'))
         self.model.add(layers.LeakyReLU(alpha=self.leak_alpha))
-        self.model.add(layers.MaxPool2D())
+        self.model.add(layers.MaxPool2D(padding='same'))
+        self.model.add(layers.Dropout(self.dropout_prob))
+
+        self.model.add(layers.Conv2D(256, 3, padding='same'))
+        self.model.add(layers.LeakyReLU(alpha=self.leak_alpha))
+        self.model.add(layers.MaxPool2D(padding='same'))
         self.model.add(layers.Dropout(self.dropout_prob))
 
         self.model.add(layers.Flatten())
-        self.model.add(layers.Dense(256, kernel_regularizer=keras.regularizers.l2(self.regularization_value)))
+        self.model.add(layers.Dense(128, kernel_regularizer=keras.regularizers.l2(self.regularization_value)))
         self.model.add(layers.LeakyReLU(alpha=self.leak_alpha))
         self.model.add(layers.Dropout(self.dropout_prob * 2))
 
@@ -40,15 +48,14 @@ class CnnModel(keras.Model):
             layers.Dense(self.nb_classes, kernel_regularizer=keras.regularizers.l2(self.regularization_value),
                          activation='softmax'))
         optimizer = keras.optimizers.Adam()
+
+
         self.model.compile(optimizer=optimizer, loss=keras.losses.binary_crossentropy,
                        metrics=['accuracy'])
 
         self.model.summary()
 
     def train_model(self, gt_imgs, tr_imgs, nb_epochs=100):
-
-
-
 
         np.random.seed(1)  # for reproducibility
 
@@ -68,29 +75,29 @@ class CnnModel(keras.Model):
 
                     # Sample a random window from the image
                     center = np.random.randint(self.window_size // 2, shape[0] - self.window_size // 2, 2)
+
                     sub_image = tr_imgs[idx][center[0] - self.window_size // 2:center[0] + self.window_size // 2,
                                 center[1] - self.window_size // 2:center[1] + self.window_size // 2]
+
                     gt_sub_image = gt_imgs[idx][center[0] - self.patch_size // 2:center[0] + self.patch_size // 2,
                                    center[1] - self.patch_size // 2:center[1] + self.patch_size // 2]
 
                     threshold = 0.25
                     label = (np.array([np.mean(gt_sub_image)]) > threshold) * 1
-
                     label = keras.utils.to_categorical(label, self.nb_classes)
                     X_batch[i] = sub_image
                     Y_batch[i] = label
-
                 yield (X_batch, Y_batch)
 
-        samples_per_epoch = 62500
+        samples_per_epoch = tr_imgs.shape[0] * tr_imgs.shape[1] * tr_imgs.shape[2] / (self.patch_size**2 *self.batch_size)
         print("samples per epoch %d" % samples_per_epoch)
 
         # This callback reduces the learning rate when the training accuracy does not improve any more
-        lr_callback = keras.callbacks.ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5,
+        lr_callback = keras.callbacks.ReduceLROnPlateau(monitor='loss', factor=0.5, patience=1,
                                                         verbose=1, mode='auto', epsilon=0.0001, cooldown=0, min_lr=0)
 
         # Stops the training process upon convergence
-        stop_callback = keras.callbacks.EarlyStopping(monitor='loss', min_delta=0.0001, patience=11, verbose=1,
+        stop_callback = keras.callbacks.EarlyStopping(monitor='loss', min_delta=0.0001, patience=1, verbose=1,
                                                       mode='auto')
 
         try:
@@ -104,6 +111,7 @@ class CnnModel(keras.Model):
             pass
 
         print('Training completed')
+        save_weights('../weights_.h5')
 
     def save(self,
              filepath,
@@ -113,6 +121,7 @@ class CnnModel(keras.Model):
              signatures=None,
              options=None):
         self.model.save_weights(filepath)
+        print("model saved !")
 
     def predict(self,
                 x,
@@ -123,7 +132,7 @@ class CnnModel(keras.Model):
                 max_queue_size=10,
                 workers=1,
                 use_multiprocessing=False):
-        X_patches = gen_patches(preprocess_imgs(x, self.window_size, self.patch_size), self.window_size,
+        X_patches = gen_patches(x, self.window_size,
                                 self.patch_size)
         Y_pred = self.model.predict(X_patches)
         Y_pred = (Y_pred[:, 0] < Y_pred[:, 1]) * 1
