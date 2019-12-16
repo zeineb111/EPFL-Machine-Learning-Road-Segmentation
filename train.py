@@ -6,7 +6,8 @@ from src.unet_keras import *
 from utils.helpers import *
 
 # Loaded a set of images
-ROOT_DIR = "/content/drive/My Drive/Road_Segmentation/data/training/"
+PATH_ROOT = "/content/drive/My Drive/Road_Segmentation/"
+PATH_TRAINING = PATH_ROOT + "data/training/"
 
 IMG_SIZE = 400
 NUM_CHANNELS = 3
@@ -14,13 +15,13 @@ NUM_FILTER = 32
 FILTER_SIZE = 3
 
 BATCH_SIZE = 8
-NUM_EPOCHS = 20
+NUM_EPOCHS = 2
 
 
 def main(argv=None):
 
-    image_dir = ROOT_DIR + "images/"
-    gt_dir = ROOT_DIR + "groundtruth/"
+    image_dir = PATH_TRAINING + "images/"
+    gt_dir = PATH_TRAINING + "groundtruth/"
 
     files = os.listdir(image_dir)
     n = len(files)
@@ -42,14 +43,14 @@ def main(argv=None):
 
     # Save the trained model
     print('Saving trained model')
-    new_model_filename = 'unet_leaky_0val_50drop_20epoch_evo.h5'
-    model.save(new_model_filename)
+    new_model_filename = 'unet_leaky_0val_50drop_2epoch_evo.h5'
+    model.save(PATH_ROOT + new_model_filename)
 
     plt.plot(f1_scores)
     plt.xlabel('# epochs')
     plt.ylabel('F1-Score')
     plt.title('F1-Score for every epochs')
-    plt.savefig('F1-Scores.png')
+    plt.savefig(PATH_ROOT + 'F1-Scores.png')
 
 
 if __name__ == '__main__':
