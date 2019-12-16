@@ -1,7 +1,7 @@
 import tensorflow as tf
-from src.utils.helpers import *
-from src.utils.submission.mask_to_submission import *
-from src.cnn_model import CnnModel
+from utils.helpers import *
+from utils.submission.mask_to_submission import *
+from cnn_model import CnnModel
 from PIL import Image
 
 PATH_WEIGHTS = '../weights.h5'
