@@ -85,6 +85,9 @@ def unet_model(img_size, n_channel, n_filter, filter_size, leaky=False, dropout=
 
 
 def train_model(model, x_train, y_train, batch_size, n_epochs):
+    #path_checkpoint = '/content/drive/My Drive/Road_Segmentation/weights.{epoch:02d}-{loss:.2f}.hdf5'
+    #checkpoint = tf.keras.callbacks.ModelCheckpoint(path_checkpoint, monitor='loss', save_best_only=True, mode='min')
+
     history = model.fit(x_train, y_train, batch_size=batch_size, epochs=n_epochs, validation_split=0.0)
     print('\nhistory dict:', history.history)
 
