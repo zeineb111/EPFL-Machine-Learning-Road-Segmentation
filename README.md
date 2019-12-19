@@ -4,7 +4,7 @@
 
 This repository contains the design and implementation of two convolutional neural networks to classify satellite images. More specifically, the goal is to separate 16x16 blocks of pixels between roads and the rest. 
 The training set consists of 100 satellite images (400x400) with their respective ground truth. The testing set consists of 50 satellite images (608x608).
-The first one is a normal 4 layers CNN with increasing depth after each layer, the second one is an Unet architecture 
+The first one is a traditional 4 layers CNN with increasing depth after each layer, the second one is an Unet architecture 
 
 ## Requirements
 
@@ -21,8 +21,8 @@ The code is tested with the following versions
  ```bash 
 git clone <repo_url> // clone the repo
 cd src
-python run.py -normal //for normal CNN 
-python run.py -unet //for Unet architecture
+python run.py -unet //for Unet architecture (To be used for course evaluation)
+#python run.py -normal // for traditional architecutre
   ```
 
 
