@@ -14,7 +14,7 @@ NUM_CHANNELS = 3
 NUM_FILTER = 32
 FILTER_SIZE = 3
 
-BATCH_SIZE = 8
+BATCH_SIZE = 16
 NUM_EPOCHS = 600
 
 
@@ -24,7 +24,7 @@ def main(argv=None):
     gt_dir = PATH_TRAINING + "groundtruth/"
 
     files = os.listdir(image_dir)
-    n = 10 #len(files)
+    n = len(files)
 
     print("Loading " + str(n) + " images")
     imgs = [load_image(image_dir + files[i]) for i in range(n)]
@@ -32,6 +32,8 @@ def main(argv=None):
     print("Loading " + str(n) + " groundtruth images")
     gt_imgs = [load_image(gt_dir + files[i]) for i in range(n)]
 
+    # Forcing x_traing and y_train to have a shape
+    # (num_img, img_width, img_height, num_channels) is necessary
     x_train = np.asarray(imgs)
     y_train = np.expand_dims(np.asarray(gt_imgs), axis=3)
 
