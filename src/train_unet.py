@@ -1,4 +1,3 @@
-
 import os
 import matplotlib.pyplot as plt
 
@@ -19,7 +18,6 @@ NUM_EPOCHS = 600
 
 
 def main(argv=None):
-
     image_dir = PATH_TRAINING + "images/"
     gt_dir = PATH_TRAINING + "groundtruth/"
 
@@ -48,6 +46,7 @@ def main(argv=None):
     model.save(PATH_UNET)
 
     plot_metric_history(f1_scores)
+
 
 if __name__ == '__main__':
     tf.compat.v1.app.run()
