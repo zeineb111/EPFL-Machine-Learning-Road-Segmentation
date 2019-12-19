@@ -1,11 +1,36 @@
 import os
-
 import numpy as np
-
-from PIL import Image
-import tensorflow as tf
 import matplotlib.image as mpimg
 import re
+
+from PIL import Image
+from tensorflow.keras.utils import to_categorical
+import matplotlib as plt
+
+PIXEL_DEPTH = 255
+FOREGROUND_THRESHOLD = 0.25  # percentage of pixels > 1 required to assign a foreground label to a patch
+
+
+def load_image(filename):
+    return mpimg.imread(filename)
+
+
+def load_data(data_path):
+    files = os.listdir(data_path)
+    n = len(files)
+    imgs = [load_image(data_path + '/' + files[i]) for i in range(n)]
+
+    return np.asarray(imgs)
+
+
+# assign a label to a patch
+def patch_to_label(patch):
+    """Maps a BW white patch image to a label using thresholding """
+    df = np.mean(patch)
+    if df > FOREGROUND_THRESHOLD:
+        return 0
+    else:
+        return 1
 
 
 def img_crop(im, w, h, stride, padding):
@@ -21,25 +46,11 @@ def img_crop(im, w, h, stride, padding):
             list_patches.append(im_patch)
     return list_patches
 
-def pad_image(img, padding_size):
-    """
-    Extend the canvas of an image. Mirror boundary conditions are applied.
-    """
-    if len(img.shape) < 3:
-        # Greyscale image (ground truth)
-        data = np.pad(img, ((padding_size, padding_size), (padding_size, padding_size)), 'reflect')
-    else:
-        # RGB image
-        data = np.pad(img, ((padding_size, padding_size), (padding_size, padding_size), (0, 0)), 'reflect')
-    return data
 
-
-def load_image(filename):
-    if os.path.isfile(filename):
-        img = mpimg.imread(filename)
-        return img
-    else:
-        raise Exception('File ' + filename + ' does not exist')
+def img_float_to_uint8(img):
+    rimg = img - np.min(img)
+    rimg = (rimg / np.max(rimg) * PIXEL_DEPTH).round().astype(np.uint8)
+    return rimg
 
 
 def load_images(train_dir, gt_dir, num_images):
@@ -57,39 +68,92 @@ def group_patches(patches, num_images):
 
 
 def gen_patches(imgs, window_size, patch_size):
+    """Generate patches from image"""
     padding_size = int((window_size - patch_size) / 2)
 
-    patches = np.asarray([img_crop(imgs[i], patch_size, patch_size,patch_size ,padding_size) for i in range(imgs.shape[0])])
+    patches = np.asarray(
+        [img_crop(imgs[i], patch_size, patch_size, patch_size, padding_size) for i in range(imgs.shape[0])])
     print(patches.shape)
 
     return patches.reshape(-1, patches.shape[2], patches.shape[3], patches.shape[4])
 
 
-def preprocess_imgs(imgs):
-    
-    return imgs.astype(float)/255.0
-
-
-def generate_submission(model, submission_filename, *image_filenames):
+def generate_submission(model, submission_path, is_unet, *image_filenames):
     """ Generate a .csv containing the classification of the test set. """
-    with open(submission_filename, 'w') as f:
+    with open(submission_path, 'w') as f:
         f.write('id,prediction\n')
         for fn in image_filenames[0:]:
-            f.writelines('{}\n'.format(s) for s in mask_to_submission_strings(model, fn))
+            if is_unet:
+                f.writelines('{}\n'.format(s) for s in mask_to_submission_strings_unet(fn))
+            else:
+                f.writelines('{}\n'.format(s) for s in mask_to_submission_strings(model, fn))
 
 
-# Reads an image and  outputs the label that should go into the submission file
-def mask_to_submission_strings(model, filename):
-    img_number = int(re.search(r"\d+", filename).group(0))
-    image = load_image(filename)
+def mask_to_submission_strings(model, image_filename):
+    """Reads an testing image (RGB), predicts labels and outputs the strings that should go into the submission file"""
+    img_number = int(re.search(r"\d+", image_filename).group(0))
+    image = load_image(image_filename)
     image = image.reshape((1, image.shape[0], image.shape[1], image.shape[2]))
     labels = model.predict(image)
     labels = labels.reshape(-1)
     patch_size = model.patch_size
     count = 0
-    print("Processing image => " + filename)
+    print("Processing image => " + image_filename)
     for j in range(0, image.shape[2], patch_size):
         for i in range(0, image.shape[1], patch_size):
             label = int(labels[count])
             count += 1
             yield ("{:03d}_{}_{},{}".format(img_number, j, i, label))
+
+
+def mask_to_submission_strings_unet(image_filename):
+    """Reads a predicted image (BW) and outputs the strings that should go into the submission file"""
+    img_number = int(re.search(r"\d+", image_filename).group(0))
+    im = mpimg.imread(image_filename)
+    patch_size = 16
+    for j in range(0, im.shape[1], patch_size):
+        for i in range(0, im.shape[0], patch_size):
+            patch = im[i: i + patch_size, j: j + patch_size]
+            label = patch_to_label(patch)
+            yield "{:03d}_{}_{},{}".format(img_number, j, i, label)
+
+
+def gen_image_predictions_unet(model, prediction_path, *image_filenames):
+    """Predicts labels and export them as BW images"""
+    for idx, path in enumerate(image_filenames):
+        img = np.squeeze(load_image(path))
+        prediction = img_predict_unet(img, model)
+        prediction = np.squeeze(prediction).round()
+        prediction = img_float_to_uint8(prediction)
+        prediction_name = prediction_path + 'pred_' + str(idx + 1) + '_unet.png'
+        Image.fromarray(prediction).save(prediction_name)
+
+
+def img_predict_unet(img, model):
+    width = img.shape[0]
+    height = img.shape[1]
+
+    img1 = img[:400, :400]
+    img2 = img[:400, -400:]
+    img3 = img[-400:, :400]
+    img4 = img[-400:, -400:]
+
+    imgs = np.array([img1, img2, img3, img4])
+    predictions = model.predict(imgs)
+
+    prediction = np.zeros((width, height, 1))
+
+    prediction[:400, :400] = predictions[0]
+    prediction[:400, -400:] = predictions[1]
+    prediction[-400:, :400] = predictions[2]
+    prediction[-400:, -400:] = predictions[3]
+
+    return prediction
+
+
+def plot_metric_history(f1_scores):
+    plt.plot(f1_scores)
+    plt.xlabel('# epochs')
+    plt.ylabel('F1-Score')
+    plt.title('F1-Score for every epochs')
+    plt.savefig('F1-Scores.png')

@@ -188,10 +188,5 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
-
-.idea
-data/
-data/test_set_images/
-data_test/
-predictions/
-groundtruth/
+tmp\
+/data/training/
