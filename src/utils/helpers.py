@@ -28,9 +28,9 @@ def patch_to_label(patch):
     """Maps a BW white patch image to a label using thresholding """
     df = np.mean(patch)
     if df > FOREGROUND_THRESHOLD:
-        return 0
-    else:
         return 1
+    else:
+        return 0
 
 
 def img_crop(im, w, h, stride, padding):
