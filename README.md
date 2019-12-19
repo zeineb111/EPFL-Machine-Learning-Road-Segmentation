@@ -17,7 +17,6 @@ The code is tested with the following versions
 
 ## Instructions
 
-The data and the model needed in order to run the code can be downloaded here : https://drive.google.com/open?id=1ZKGLaomuWfeflbJBQG8MJ8q1jSkVGSDh
 
  ```bash 
 git clone <repo_url> // clone the repo
