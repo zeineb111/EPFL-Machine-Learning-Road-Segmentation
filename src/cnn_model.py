@@ -132,7 +132,7 @@ class CnnModel(keras.Model):
              save_format=None,
              signatures=None,
              options=None):
-        self.model.save_weights(check_file(filepath))
+        self.model.save_weights(filepath)
         print("model saved !")
 
     def predict(self,
