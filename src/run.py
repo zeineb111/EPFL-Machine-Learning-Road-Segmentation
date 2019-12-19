@@ -1,34 +1,47 @@
 import tensorflow as tf
 from utils.helpers import *
-from utils.submission.mask_to_submission import *
 from cnn_model import CnnModel
-from PIL import Image
+import tensorflow.keras as keras
+import sys
 
-PATH_WEIGHTS = '../weights.h5'
+PATH_WEIGHTS = '../models/weights.h5'
+PATH_UNET = '../models/unet.h5'
 PATH_TEST_DATA = '../data/test_set_images/'
-PATH_PREDICTION_DIR = '../predictions'
-PATH_SUBMISSION = 'submission.csv'
-
+PATH_PREDICTION_DIR = '../data/predictions/'
+PATH_SUBMISSION = '../final_submission.csv'
 TEST_SIZE = 50
 
 
-def main(argv=None):
-    print('Loading Model...')
-    model = CnnModel()
-    model.load_weights(PATH_WEIGHTS)
-
+def main(argv):
     # We add all test images to an array, used later for generating a submission
-    image_filenames = []
-    for i in range(1, 51):
-        image_filenames = [PATH_TEST_DATA + 'test_' + str(i + 1) + '/' + 'test_' + str(i + 1) + '.png' for i
-                           in range(TEST_SIZE)]
+    image_filenames = [PATH_TEST_DATA + 'test_' + str(i + 1) + '/' + 'test_' + str(i + 1) + '.png' for i
+                       in range(TEST_SIZE)]
 
-    # Set-up submission filename
-    submission_filename = 'final_submission.csv'
+    print('Loading Model...')
+    if len(argv) != 2:
+        print(len(argv))
+        raise Exception('Please pass only one argument to the script')
+    else:
+        if argv[1] == '-unet':
 
-    # Generates the submission
-    generate_submission(model, submission_filename, *image_filenames)
+            # Run the UNET model
+            model_unet = keras.models.load_model(PATH_UNET)
+            gen_image_predictions_unet(model_unet, PATH_PREDICTION_DIR, *image_filenames)
+
+            # Generates the submission
+            generate_submission(model_unet, PATH_SUBMISSION, True, *image_filenames)
+
+        elif argv[1] == '-normal':
+            # Run the normal CNN model
+            model = CnnModel()
+            model.load_weights(PATH_WEIGHTS)
+
+            # Generates the submission
+            generate_submission(model, PATH_SUBMISSION, False,*image_filenames)
+
+        else:
+            raise Exception('Please pass only "unet" or "normal" as argument to the script')
 
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv)

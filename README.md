@@ -1,32 +1,60 @@
-# Project Road Segmentation
+# Road Segmentation 
 
-For this choice of project task, we provide a set of satellite images acquired 
-from GoogleMaps. We also provide ground-truth images where each pixel is labeled 
-as road or background. 
+## Description 
 
-Your task is to train a classifier to segment roads in these images, i.e. 
-assigns a label `road=1, background=0` to each pixel.
+This repository contains the design and implementation of two convolutional neural networks to classify satellite images. More specifically, the goal is to separate 16x16 blocks of pixels between roads and the rest. 
+The training set consists of 100 satellite images (400x400) with their respective ground truth. The testing set consists of 50 satellite images (608x608).
+The first one is a normal 4 layers CNN with increasing depth after each layer, the second one is an Unet architecture 
 
-Submission system environment setup:
+## Requirements
 
-1. The dataset is available from the 
-[CrowdAI page](https://www.crowdai.org/challenges/epfl-ml-road-segmentation).
+The code is tested with the following versions 
+- TensorFlow 2.0
+- Numpy 1.17.xx
+- Pillow 6.2.xx
+- Matplotlib 3.1.x
+- Python 3.7.x
 
-2. Obtain the python notebook `segment_aerial_images.ipynb` from this github 
-folder, to see example code on how to extract the images as well as 
-corresponding labels of each pixel.
+## Getting started
 
-The notebook shows how to use `scikit learn` to generate features from each 
-pixel, and finally train a linear classifier to predict whether each pixel is 
-road or background. Or you can use your own code as well. Our example code here 
-also provides helper functions to visualize the images, labels and predictions. 
-In particular, the two functions `mask_to_submission.py` and 
-`submission_to_mask.py` help you to convert from the submission format to a 
-visualization, and vice versa.
 
-3. As a more advanced approach, try `tf_aerial_images.py`, which demonstrates 
-the use of a basic convolutional neural network in TensorFlow for the same 
-prediction task.
+ ```bash 
+git clone <repo_url> // clone the repo
+cd src
+python run.py -normal //for normal CNN 
+python run.py -unet //for Unet architecture
+  ```
 
-Evaluation Metric:
- [F1 score](https://en.wikipedia.org/wiki/F1_score)
+
+## Technical Details: 
+  
+
+|Characteristics|Unet|Standard|
+|---|---|---|
+|Classification |Pixelwise classification|Patch classification|
+|Input|Image RGB (H X W)|72 x 72 window centered at pixel i|
+|Output|Image BW (H X W)|16 X 16 patch centered at pixel i|
+
+
+## Training Hardware: 
+
+The training was done using Google Colab. 
+- GPU: 1 x NVIDIA Tesla P100 (16GB CoWoS HBM2 at 732 GB/s)
+- CPU: 2 vCPU
+- RAM: 12 Go
+
+## File overview
+* **run.py** : contains the steps to do to run our project and get a csv file submission in the end. In order to use this, type in the command line python3 run.py (-unet or -normal). 
+* **unet.h5** : model trained with result F1 = 0.905
+* **weights.h5** : weights of the CNN standard trained model with result F1 = 0.882 
+* **final_submission.csv** : csv file generated through unet.h5.
+* **helpers.py** : contains all the utilities functions used by the neural network.
+* **train_xx.py** : contains the training code for the models 
+## Authors
+* Jalel zghonda
+* Olivier Lam
+* Ekin kulbray 
+
+## References
+
+Unet architecture : [Wikipedia](https://en.wikipedia.org/wiki/U-Net)
