@@ -62,7 +62,7 @@ class CnnModel(keras.Model):
         # Binary cross_entropy loss
         self.model.compile(optimizer=optimizer, loss=keras.losses.binary_crossentropy,
                            metrics=['accuracy'])
-
+        # Prints a summary for the model
         self.model.summary()
 
     def train_model(self, gt_imgs, tr_imgs, nb_epochs=100):
@@ -73,18 +73,7 @@ class CnnModel(keras.Model):
 
         padding_size = (self.window_size - self.patch_size) / 2
 
-        # Pad training set images (by appling mirror boundary conditions)
-        tr_new = np.empty((nb_images,
-                           tr_imgs.shape[1] + 2 * padding_size, tr_imgs.shape[2] + 2 * padding_size,
-                           tr_imgs.shape[3]))
-        gt_new = np.empty((nb_images,
-                           gt_imgs.shape[1] + 2 * padding_size, gt_imgs.shape[2] + 2 * padding_size))
-
-        for i in range(nb_images):
-            tr_new[i] = pad_image(tr_imgs[i], padding_size)
-            gt_new[i] = pad_image(gt_imgs[i], padding_size)
-        tr_imgs = tr_new
-        gt_imgs = gt_new
+        tr_imgs, gt_imgs = pad_images(tr_imgs, padding_size), pad_images(gt_imgs, padding_size)
 
         def generate_minibatch():
             """
@@ -99,15 +88,19 @@ class CnnModel(keras.Model):
                 for i in range(self.batch_size):
                     # Select a random image
                     idx = np.random.choice(nb_images)
-                    shape = tr_imgs[idx].shape
+                    tr_img = tr_imgs[idx]
+                    gt_img = gt_imgs[idx]
+
+                    shape = tr_img.shape
 
                     # Sample a random window from the image
                     center = np.random.randint(self.window_size // 2, shape[0] - self.window_size // 2, 2)
 
-                    window = tr_imgs[idx][center[0] - self.window_size // 2:center[0] + self.window_size // 2,
+                    window = tr_img[center[0] - self.window_size // 2:center[0] + self.window_size // 2,
                              center[1] - self.window_size // 2:center[1] + self.window_size // 2]
 
-                    gt_patch = gt_imgs[idx][center[0] - self.patch_size // 2:center[0] + self.patch_size // 2,
+                    # Find the corresponding ground truth patch
+                    gt_patch = gt_img[center[0] - self.patch_size // 2:center[0] + self.patch_size // 2,
                                center[1] - self.patch_size // 2:center[1] + self.patch_size // 2]
 
                     x_batch[i] = window
@@ -126,7 +119,7 @@ class CnnModel(keras.Model):
         # Stops the training process upon convergence
         stop_callback = keras.callbacks.EarlyStopping(monitor='loss', min_delta=0.0001, patience=2, verbose=1,
                                                       mode='auto')
-
+        history = None
         try:
             history = self.model.fit_generator(generate_minibatch(),
                                                steps_per_epoch=samples_per_epoch,

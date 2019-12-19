@@ -60,6 +60,12 @@ def pad_image(data, padding):
     return data
 
 
+def pad_images(images, padding_size):
+    """Extend the canvas of an image set"""
+    nb_images = images.shape[0]
+    return np.asarray([pad_image(images[i], padding_size) for i in range(nb_images)])
+
+
 def img_float_to_uint8(img):
     rimg = img - np.min(img)
     rimg = (rimg / np.max(rimg) * PIXEL_DEPTH).round().astype(np.uint8)

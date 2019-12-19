@@ -33,7 +33,7 @@ python run.py -unet //for Unet architecture
 |:---|---|---|
 |Classification |Pixelwise classification|Patch classification|
 |Input|Image RGB (H X W)|72 x 72 window centered surrounding the patch|
-|Output|Image BW (H X W)|16 X 16 patch centered |
+|Output|Image BW (H X W)|16 X 16 patch  |
 
 
 ## Training Hardware
