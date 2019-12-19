@@ -47,6 +47,19 @@ def img_crop(im, w, h, stride, padding):
     return list_patches
 
 
+def pad_image(data, padding):
+    """
+    Extend the canvas of an image. Mirror boundary conditions are applied.
+    """
+    if len(data.shape) < 3:
+        # Greyscale image (ground truth)
+        data = np.lib.pad(data, ((padding, padding), (padding, padding)), 'reflect')
+    else:
+        # RGB image
+        data = np.lib.pad(data, ((padding, padding), (padding, padding), (0, 0)), 'reflect')
+    return data
+
+
 def img_float_to_uint8(img):
     rimg = img - np.min(img)
     rimg = (rimg / np.max(rimg) * PIXEL_DEPTH).round().astype(np.uint8)

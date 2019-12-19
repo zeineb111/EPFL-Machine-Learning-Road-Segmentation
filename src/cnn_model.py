@@ -71,6 +71,21 @@ class CnnModel(keras.Model):
         np.random.seed(1)  # for reproducibility
         nb_images = tr_imgs.shape[0]
 
+        padding_size = (self.window_size - self.patch_size) / 2
+
+        # Pad training set images (by appling mirror boundary conditions)
+        tr_new = np.empty((nb_images,
+                           tr_imgs.shape[1] + 2 * padding_size, tr_imgs.shape[2] + 2 * padding_size,
+                           tr_imgs.shape[3]))
+        gt_new = np.empty((nb_images,
+                           gt_imgs.shape[1] + 2 * padding_size, gt_imgs.shape[2] + 2 * padding_size))
+
+        for i in range(nb_images):
+            tr_new[i] = pad_image(tr_imgs[i], padding_size)
+            gt_new[i] = pad_image(gt_imgs[i], padding_size)
+        tr_imgs = tr_new
+        gt_imgs = gt_new
+
         def generate_minibatch():
             """
             Procedure for real-time minibatch creation, preparing cropping random windows and corresponding patches
