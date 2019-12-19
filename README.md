@@ -26,19 +26,19 @@ python run.py -unet //for Unet architecture
   ```
 
 
-## Technical Details: 
+## Technical Details
   
 
 |Characteristics|Unet|Standard|
-|---|---|---|
+|:---|---|---|
 |Classification |Pixelwise classification|Patch classification|
-|Input|Image RGB (H X W)|72 x 72 window centered at pixel i|
-|Output|Image BW (H X W)|16 X 16 patch centered at pixel i|
+|Input|Image RGB (H X W)|72 x 72 window centered surrounding the patch|
+|Output|Image BW (H X W)|16 X 16 patch centered |
 
 
-## Training Hardware: 
+## Training Hardware
 
-The training was done using Google Colab. 
+The training was done using Google Colab with the following configuration
 - GPU: 1 x NVIDIA Tesla P100 (16GB CoWoS HBM2 at 732 GB/s)
 - CPU: 2 vCPU
 - RAM: 12 Go
